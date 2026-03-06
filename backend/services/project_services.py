@@ -1,20 +1,19 @@
 from sqlalchemy.orm import Session
 from models.Project import Project
-from datetime import datetime
+from datetime import datetime, timezone
 from models.Users import Users
 from fastapi import HTTPException
 
+
 def create_project(db: Session, data):
-
     user = db.query(Users).filter(
-    Users.id == data.owner_id,
-    Users.is_verified == True,
-    Users.status == True,
-    Users.deleted_at == None
-).first()
-
+        Users.id == data.owner_id,
+        Users.is_verified == True,
+        Users.status == True,
+        Users.deleted_at == None
+    ).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Owner user not found")
+        raise HTTPException(status_code=404, detail="Owner user not found or inactive")
 
     project = Project(
         name=data.name,
@@ -25,7 +24,6 @@ def create_project(db: Session, data):
     db.add(project)
     db.commit()
     db.refresh(project)
-
     return project
 
 
@@ -49,11 +47,9 @@ def update_project(db: Session, project_id: int, data):
     for key, value in data.dict(exclude_unset=True).items():
         setattr(project, key, value)
 
-    project.updated_at = datetime.utcnow()
-
+    project.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(project)
-
     return project
 
 
@@ -63,8 +59,6 @@ def delete_project(db: Session, project_id: int):
     if not project:
         return None
 
-    project.deleted_at = datetime.utcnow()
-
+    project.deleted_at = datetime.now(timezone.utc)
     db.commit()
-
     return project

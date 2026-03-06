@@ -1,29 +1,37 @@
 from sqlalchemy.orm import Session
 from models.Tasks import Task
-from datetime import datetime
+from datetime import datetime, timezone
 from models.Project import Project
 from models.Users import Users
 from fastapi import HTTPException
 
 
 def create_task(db: Session, data):
-
-    project = db.query(Project).filter(Project.id == data.project_id).first()
+    project = db.query(Project).filter(
+        Project.id == data.project_id,
+        Project.deleted_at == None
+    ).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    creator = db.query(Users).filter(Users.id == data.created_by).first()
+    creator = db.query(Users).filter(
+        Users.id == data.created_by,
+        Users.is_verified == True,
+        Users.status == True,
+        Users.deleted_at == None
+    ).first()
     if not creator:
-        raise HTTPException(status_code=404, detail="Creator not found")
-    
-    assigner = db.query(Users).filter(Users.id == data.created_by).first()
-    if not assigner:
-        raise HTTPException(status_code=404, detail="Assigner not found")
+        raise HTTPException(status_code=404, detail="Creator not found or inactive")
 
     if data.assigned_to:
-        assignee = db.query(Users).filter(Users.id == data.assigned_to).first()
+        assignee = db.query(Users).filter(
+            Users.id == data.assigned_to,
+            Users.is_verified == True,
+            Users.status == True,
+            Users.deleted_at == None
+        ).first()
         if not assignee:
-            raise HTTPException(status_code=404, detail="Assigned user not found")
+            raise HTTPException(status_code=404, detail="Assigned user not found or inactive")
 
     task = Task(
         title=data.title,
@@ -39,7 +47,6 @@ def create_task(db: Session, data):
     db.add(task)
     db.commit()
     db.refresh(task)
-
     return task
 
 
@@ -60,14 +67,23 @@ def update_task(db: Session, task_id: int, data):
     if not task:
         return None
 
-    for key, value in data.dict(exclude_unset=True).items():
+    update_data = data.dict(exclude_unset=True)
+    if "assigned_to" in update_data and update_data["assigned_to"] is not None:
+        assignee = db.query(Users).filter(
+            Users.id == update_data["assigned_to"],
+            Users.is_verified == True,
+            Users.status == True,
+            Users.deleted_at == None
+        ).first()
+        if not assignee:
+            raise HTTPException(status_code=404, detail="Assigned user not found or inactive")
+
+    for key, value in update_data.items():
         setattr(task, key, value)
 
-    task.updated_at = datetime.utcnow()
-
+    task.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(task)
-
     return task
 
 
@@ -77,8 +93,6 @@ def delete_task(db: Session, task_id: int):
     if not task:
         return None
 
-    task.deleted_at = datetime.utcnow()
-
+    task.deleted_at = datetime.now(timezone.utc)
     db.commit()
-
     return task

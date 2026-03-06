@@ -14,7 +14,6 @@ from controllers.task_controller import router as task_router
 from controllers.taskComment_controller import router as taskComment_router
 from controllers.taskAttachement_controller import router as taskAttachement_router
 from database.connection import Base, engine
-from database.connection import Base, engine
 import models
 
 app = FastAPI()

@@ -35,7 +35,8 @@ def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
     email = data.email.strip().lower()
 
     user = db.query(Users).filter(func.lower(Users.email) == email).first()
-
+    if not user:
+        raise HTTPException(status_code=404, detail="No account found with this email.")
     code = _replace_otp(db, user)     
     try:
         send_otp_email(user.email, code)

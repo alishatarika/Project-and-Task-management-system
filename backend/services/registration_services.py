@@ -10,8 +10,6 @@ from utils.otp import send_otp_email
 from sqlalchemy.exc import SQLAlchemyError
 
 
-
-
 def register_user_service(db: Session, data: RegisterSchema):
     if db.query(Users).filter(Users.username == data.username).first():
         raise HTTPException(status_code=400, detail="Username already taken.")

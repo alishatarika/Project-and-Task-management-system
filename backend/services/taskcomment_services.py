@@ -1,20 +1,26 @@
 from sqlalchemy.orm import Session
 from models.TaskComments import TaskComment
-from datetime import datetime
+from datetime import datetime, timezone
 from models.Tasks import Task
 from models.Users import Users
 from fastapi import HTTPException
 
 
 def add_comment(db: Session, task_id: int, user_id: int, comment: str):
-
-    task = db.query(Task).filter(Task.id == task_id).first()
+    task = db.query(Task).filter(
+        Task.id == task_id,
+        Task.deleted_at == None
+    ).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-
-    user = db.query(Users).filter(Users.id == user_id).first()
+    user = db.query(Users).filter(
+        Users.id == user_id,
+        Users.is_verified == True,
+        Users.status == True,
+        Users.deleted_at == None
+    ).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="User not found or inactive")
 
     new_comment = TaskComment(
         task_id=task_id,
@@ -26,9 +32,7 @@ def add_comment(db: Session, task_id: int, user_id: int, comment: str):
     db.add(new_comment)
     db.commit()
     db.refresh(new_comment)
-
     return new_comment
-
 
 
 def get_comments(db: Session, task_id: int):
@@ -44,9 +48,7 @@ def get_all_comments(db: Session):
     ).all()
 
 
-
 def update_comment(db: Session, comment_id: int, comment: str):
-
     existing_comment = db.query(TaskComment).filter(
         TaskComment.id == comment_id,
         TaskComment.deleted_at == None
@@ -56,16 +58,13 @@ def update_comment(db: Session, comment_id: int, comment: str):
         raise HTTPException(status_code=404, detail="Comment not found")
 
     existing_comment.comment = comment
-    existing_comment.updated_at = datetime.utcnow()
-
+    existing_comment.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(existing_comment)
-
     return existing_comment
 
 
 def delete_comment(db: Session, comment_id: int):
-
     comment = db.query(TaskComment).filter(
         TaskComment.id == comment_id,
         TaskComment.deleted_at == None
@@ -74,8 +73,6 @@ def delete_comment(db: Session, comment_id: int):
     if not comment:
         return None
 
-    comment.deleted_at = datetime.utcnow()
-
+    comment.deleted_at = datetime.now(timezone.utc)
     db.commit()
-
     return comment

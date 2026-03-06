@@ -12,7 +12,6 @@ def create_role(db: Session, name: str, status: bool):
         if role.deleted_at is None:
             raise HTTPException(status_code=400, detail="Role already exists")
 
-        # restore soft deleted role
         role.deleted_at = None
         role.status = status
         role.updated_at = datetime.utcnow()

@@ -6,11 +6,10 @@ from datetime import datetime, timedelta, timezone
 from database.connection import get_db
 from models.Users import Users
 from models.Otp import OTP
-from schemas.OtpSchema import OtpVerifyRequest,OtpResendRequest
+from schemas.OtpSchema import OtpVerifyRequest, OtpResendRequest
 from utils.jwthandler import create_access_token
-from utils.otp import  send_otp_email
+from utils.otp import send_otp_email
 from services.otp_services import _replace_otp
-
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -21,6 +20,7 @@ def verify_otp_endpoint(data: OtpVerifyRequest, db: Session = Depends(get_db)):
     user = db.query(Users).filter(Users.email == data.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="No account found with this email.")
+
     record = db.query(OTP).filter(
         OTP.email       == data.email,
         OTP.is_verified == False,
@@ -31,7 +31,11 @@ def verify_otp_endpoint(data: OtpVerifyRequest, db: Session = Depends(get_db)):
             token = create_access_token({"user_id": user.id})
             return JSONResponse(
                 status_code=200,
-                content={"message": "Email already verified.", "user": user.to_dict()},
+                content={
+                    "message": "Email already verified.",
+                    "access_token": token,
+                    "user": user.to_dict(),
+                },
             )
         raise HTTPException(
             status_code=400,
@@ -58,7 +62,11 @@ def verify_otp_endpoint(data: OtpVerifyRequest, db: Session = Depends(get_db)):
     token = create_access_token({"user_id": user.id})
     return JSONResponse(
         status_code=200,
-        content={"message": "Email verified successfully.", "user": user.to_dict()},
+        content={
+            "message": "Email verified successfully.",
+            "access_token": token,
+            "user": user.to_dict(),
+        },
     )
 
 

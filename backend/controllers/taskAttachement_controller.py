@@ -2,8 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database.connection import get_db
 from schemas.Task_Attachement import TaskAttachmentCreate, TaskAttachmentUpdate
-from services.taskattachments_services import *
+from services.taskattachments_services import (
+    add_attachment, get_all_attachments, get_attachments_by_task,
+    update_attachment, delete_attachment
+)
 from middleware.auth import get_current_user
+from models.Users import Users
 
 router = APIRouter(prefix="/task-attachments", tags=["Task Attachments"])
 
