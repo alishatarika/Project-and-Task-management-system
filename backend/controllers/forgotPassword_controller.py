@@ -11,8 +11,7 @@ from schemas.ForgotPasswordSchema import ForgotPasswordRequest, VerifyForgotOtpR
 from datetime import datetime, timedelta, timezone
 from services.otp_services import _replace_otp
 
-router = APIRouter()
-
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 # ── Password validation ───────────────────────────────────────────────────────
 
@@ -27,8 +26,6 @@ def validate_password(password: str):
         raise HTTPException(status_code=400, detail="Must contain a number.")
     if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
         raise HTTPException(status_code=400, detail="Must contain a special character.")
-
-
 
 
 

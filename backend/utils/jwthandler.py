@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from utils.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
-REMEMBER_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+REMEMBER_TOKEN_EXPIRE_MINUTES = 60 * 24 
 
 
 def create_access_token(data: dict, remember: bool = False):

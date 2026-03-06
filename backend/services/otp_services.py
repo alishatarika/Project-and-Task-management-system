@@ -33,8 +33,7 @@ def is_email_verified(db: Session, email: str) -> bool:
     return record is not None
 
 def _replace_otp(db: Session, user: Users) -> str:
-    """Delete all existing OTPs for the user, create a fresh one. Returns the code."""
-    db.query(OTP).filter(OTP.email == user.email).delete(synchronize_session="fetch")
+    db.query(OTP).filter(OTP.email == user.email).delete()
     code = generate_otp()
     db.add(OTP(
         user_id     = user.id,
@@ -53,10 +52,8 @@ def _expire_old_otps(db: Session, email: str) -> None:
         OTP.is_verified == False,
     ).update(
         {"deleted_at": datetime.now(timezone.utc)},
-        synchronize_session="fetch",
     )
 def _issue_otp(db: Session, user: Users) -> str:
-    """Expire old OTPs, create a new one, flush (no commit). Returns the code."""
     _expire_old_otps(db, user.email)
     code = generate_otp()
     db.add(OTP(

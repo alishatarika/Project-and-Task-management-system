@@ -13,7 +13,7 @@ from services.otp_services import _replace_otp
 
 
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 @router.post("/verify-otp")
