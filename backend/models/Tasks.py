@@ -39,7 +39,7 @@ class Task(Base):
             "task_status": self.task_status,
             "priority":    self.priority,
             "due_date":    self.due_date.isoformat() if self.due_date else None,
-            "status":   self.is_active,
+            "status":   self.status,
             "created_at":  self.created_at.isoformat() if self.created_at else None,
             "updated_at":  self.updated_at.isoformat() if self.updated_at else None,
             "creator":     self.creator.to_dict() if self.creator else None,

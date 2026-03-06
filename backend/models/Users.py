@@ -17,19 +17,25 @@ class Users(Base):
     updated_at = Column(DateTime(timezone=True), nullable=True)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
-    
     user_roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
     owned_projects = relationship("Project", back_populates="owner", foreign_keys="Project.owner_id")
     project_members = relationship("ProjectMember", back_populates="user", foreign_keys="ProjectMember.user_id")
 
     assigned_tasks = relationship("Task", back_populates="assignee", foreign_keys="Task.assigned_to")
     created_tasks = relationship("Task", back_populates="creator", foreign_keys="Task.created_by")
-
     task_comments = relationship("TaskComment", back_populates="user")
     task_attachments = relationship("TaskAttachment", back_populates="uploader")
     activity_logs = relationship("ActivityLog", back_populates="user")
-    notifications = relationship("Notification", back_populates="user")
-
+    notifications_received = relationship(
+        "Notification",
+        foreign_keys="Notification.user_id",
+        back_populates="user"
+    )
+    notifications_sent = relationship(
+        "Notification",
+        foreign_keys="Notification.send_by",
+        back_populates="sender"
+    )
     otps = relationship("OTP", back_populates="user", cascade="all, delete-orphan")
 
     def to_dict(self):

@@ -14,7 +14,6 @@ class Project(Base):
     created_at  = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at  = Column(DateTime(timezone=True), nullable=True)
     deleted_at  = Column(DateTime(timezone=True), nullable=True)
-
     owner   = relationship("Users", back_populates="owned_projects", foreign_keys=[owner_id])
     members = relationship("ProjectMember", back_populates="project", cascade="all, delete-orphan")
     tasks   = relationship("Task", back_populates="project", cascade="all, delete-orphan")

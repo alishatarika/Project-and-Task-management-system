@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status,Response
 from schemas.LoginSchema import LoginSchema
 from utils.jwthandler import create_access_token
 from sqlalchemy.orm import Session
 from database.connection import get_db
 from services.login_services import authenticate_user
+from middleware.auth import get_current_user
+from models.Users import Users
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
-
 
 @router.post("/login")
 def login(data: LoginSchema, db: Session = Depends(get_db)):
@@ -52,4 +53,16 @@ def login(data: LoginSchema, db: Session = Depends(get_db)):
         "access_token": token,
         "token_type": "bearer",
         "user": user.to_dict(),
+    }
+    
+
+@router.post("/logout")
+def logout(
+    response: Response,
+    current_user: Users = Depends(get_current_user)
+):
+    response.delete_cookie(key="access_token")
+
+    return {
+        "message": "Logged out successfully"
     }

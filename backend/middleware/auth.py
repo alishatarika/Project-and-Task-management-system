@@ -3,7 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from database.connection import get_db
 from utils.jwthandler import decode_token
-from models.Users import User
+from models.Users import Users
 
 
 security = HTTPBearer()
@@ -26,7 +26,7 @@ def get_current_user(
 
     user_id = payload.get("user_id")
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(Users).filter(Users.id == user_id).first()
 
     if not user:
         raise HTTPException(
