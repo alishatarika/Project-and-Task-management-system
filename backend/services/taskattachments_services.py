@@ -36,8 +36,8 @@ def get_attachments_by_task(db: Session, task_id: int):
         TaskAttachment.deleted_at == None
     ).all()
 
-
 def update_attachment(db: Session, attachment_id: int, data):
+
     file = db.query(TaskAttachment).filter(
         TaskAttachment.id == attachment_id,
         TaskAttachment.deleted_at == None
@@ -46,7 +46,18 @@ def update_attachment(db: Session, attachment_id: int, data):
     if not file:
         raise HTTPException(status_code=404, detail="Attachment not found")
 
-    for key, value in data.dict(exclude_unset=True).items():
+    update_data = data.dict(exclude_unset=True)
+
+    if "task_id" in update_data:
+        task = db.query(Task).filter(Task.id == update_data["task_id"]).first()
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+    if "uploaded_by" in update_data:
+        user = db.query(Users).filter(Users.id == update_data["uploaded_by"]).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+    for key, value in update_data.items():
         setattr(file, key, value)
 
     file.updated_at = datetime.utcnow()

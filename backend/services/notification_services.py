@@ -3,11 +3,13 @@ from models.Notifications import Notification
 from datetime import datetime
 
 
-def create_notification(db: Session, user_id: int, message: str):
+def create_notification(db: Session, user_id: int, send_by: int, message: str):
 
     notification = Notification(
         user_id=user_id,
-        message=message
+        send_by=send_by,
+        message=message,
+        status=1
     )
 
     db.add(notification)

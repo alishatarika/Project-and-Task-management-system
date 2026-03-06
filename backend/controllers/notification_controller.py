@@ -27,7 +27,10 @@ def create_notification(
     current_user: Users = Depends(get_current_user)
 ):
 
-    notification = notification_services.create_notification(db, user_id, message)
+    notification = notification_services.create_notification(db,
+    user_id,
+    send_by=current_user.id,
+    message=message)
 
     return {
         "message": "Notification created",
