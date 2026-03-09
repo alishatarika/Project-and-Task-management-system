@@ -24,6 +24,12 @@ def send_otp_email(to_email: str, otp: str):
     user     = os.getenv("SMTP_EMAIL", "")
     password = os.getenv("SMTP_PASSWORD", "")
 
+    if not user or not password:
+        raise HTTPException(
+            status_code=500,
+            detail="Email service is not configured. Please contact support."
+        )
+
     body = f"""
 Hi there,
 

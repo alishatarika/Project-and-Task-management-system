@@ -1,144 +1,207 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import Cookies from "js-cookie";
+import { useNavigate, Link } from "react-router-dom";
+import { z } from "zod";
+import { saveAuth, isLoggedIn } from "../utils/auth";
+import { toast } from "react-hot-toast";
 
-const API = "http://localhost:8000/auth/login";
+const LOGIN_API = "http://localhost:8000/auth/login";
+
+const loginSchema = z.object({
+  identifier: z.string().min(1, "Username or email is required"),
+  password: z
+    .string()
+    .min(1, "Password is required")
+    .min(6, "Password must be at least 6 characters"),
+});
+
+type LoginForm = z.infer<typeof loginSchema>;
+type FormErrors = Partial<Record<keyof LoginForm, string>>;
 
 const Login: React.FC = () => {
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
-  const [message, setMessage] = useState("");
+  const navigate = useNavigate();
 
-  const [errors, setErrors] = useState({
-    identifier: "",
-    password: "",
-  });
-  const validate = () => {
-    let newErrors = { identifier: "", password: "" };
-    let valid = true;
+  const [form, setForm] = useState<LoginForm>({ identifier: "", password: "" });
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Partial<Record<keyof LoginForm, boolean>>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    if (!identifier.trim()) {
-      newErrors.identifier = "Username or email is required";
-      valid = false;
-    }
+  useEffect(() => {
+    if (isLoggedIn()) navigate("/", { replace: true });
+  }, [navigate]);
 
-    if (!password) {
-      newErrors.password = "Password is required";
-      valid = false;
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-      valid = false;
-    }
+  const validateField = useCallback((field: keyof LoginForm, value: string): string => {
+    const result = loginSchema.pick({ [field]: true } as any).safeParse({ [field]: value });
+    return result.success ? "" : result.error?.issues?.[0]?.message ?? "";
+  }, []);
 
-    setErrors(newErrors);
-    return valid;
-  };
+  const handleChange = useCallback(
+    (field: keyof LoginForm, value: string) => {
+      setForm((prev) => ({ ...prev, [field]: value }));
+      if (touched[field]) {
+        setErrors((prev) => ({ ...prev, [field]: validateField(field, value) }));
+      }
+    },
+    [touched, validateField]
+  );
+
+  const handleBlur = useCallback(
+    (field: keyof LoginForm) => {
+      setTouched((prev) => ({ ...prev, [field]: true }));
+      setErrors((prev) => ({ ...prev, [field]: validateField(field, form[field]) }));
+    },
+    [form, validateField]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setTouched({ identifier: true, password: true });
 
-    if (!validate()) return;
+    const fieldErrors: FormErrors = {};
+    (["identifier", "password"] as (keyof LoginForm)[]).forEach((field) => {
+      const err = validateField(field, form[field]);
+      if (err) fieldErrors[field] = err;
+    });
+    if (Object.keys(fieldErrors).length > 0) {
+      setErrors(fieldErrors);
+      return;
+    }
 
+    setIsSubmitting(true);
     try {
-      const res = await axios.post(API, {
-        identifier,
-        password,
-        remember,
+      const res = await axios.post(LOGIN_API, {
+        identifier: form.identifier,
+        password:   form.password,
+        remember:   rememberMe,
       });
+      const { access_token, user } = res.data;
+      saveAuth(access_token, user, rememberMe);
 
-      const token = res.data.access_token;
+      if (user.is_verified === false) {
+        toast("Please verify your email first.", { icon: "📧" });
+        navigate("/verify-otp", { state: { email: user.email } });
+        return;
+      }
 
-      Cookies.set("token", token, {
-        expires: remember ? 7 : 1,
-        secure: false,
-        sameSite: "strict",
-      });
+      toast.success("Logged in successfully!");
+      navigate("/");
 
-      setMessage("Login successful");
+    } catch (error: any) {
+      const status = error.response?.status;
+      const detail = error.response?.data?.detail;
 
-    } catch (error) {
-      setMessage(error.response?.data?.detail || "Login failed");
+      if (status === 403) {
+        const isNotVerified =
+          typeof detail === "object"
+            ? detail?.code === "USER_NOT_VERIFIED"
+            : typeof detail === "string" && detail.toLowerCase().includes("verify");
+
+        if (isNotVerified) {
+          const emailToUse =
+            (typeof detail === "object" ? detail?.email : null) || form.identifier;
+
+          toast("Please verify your email first.", { icon: "📧" });
+          navigate("/verify-otp", { state: { email: emailToUse } });
+          return;
+        }
+        const msg =
+          typeof detail === "object" ? detail?.message : detail || "Access denied.";
+        toast.error(msg);
+        return;
+      }
+
+      const msg = Array.isArray(detail)
+        ? detail.map((e: any) => e.msg).join(", ")
+        : typeof detail === "string"
+        ? detail
+        : "Login failed. Please check your credentials.";
+
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-
       <div className="w-full max-w-md bg-white shadow-lg rounded-xl p-8">
+        <h2 className="text-2xl font-bold text-center mb-6 text-gray-700">Login</h2>
 
-        <h2 className="text-2xl font-bold text-center mb-6 text-gray-700">
-          Login
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
             <input
               type="text"
               placeholder="Username or Email"
-              value={identifier}
-              onChange={(e) => {
-                setIdentifier(e.target.value);
-                setErrors((prev) => ({ ...prev, identifier: "" }));
-              }}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              value={form.identifier}
+              onChange={(e) => handleChange("identifier", e.target.value)}
+              onBlur={() => handleBlur("identifier")}
+              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                errors.identifier ? "border-red-400 focus:ring-red-300" : "focus:ring-blue-400"
+              }`}
             />
             {errors.identifier && (
               <p className="text-red-500 text-sm mt-1">{errors.identifier}</p>
             )}
           </div>
 
-          {/* Password */}
           <div>
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                setErrors((prev) => ({ ...prev, password: "" }));
-              }}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
+            <div className="flex">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={form.password}
+                onChange={(e) => handleChange("password", e.target.value)}
+                onBlur={() => handleBlur("password")}
+                className={`w-full px-4 py-2 border rounded-l-lg focus:outline-none focus:ring-2 ${
+                  errors.password ? "border-red-400 focus:ring-red-300" : "focus:ring-blue-400"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="px-3 border border-l-0 rounded-r-lg bg-gray-100 text-sm text-gray-600"
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
             {errors.password && (
               <p className="text-red-500 text-sm mt-1">{errors.password}</p>
             )}
           </div>
 
           <div className="flex items-center justify-between">
-            <label className="flex items-center text-sm text-gray-600">
+            <label className="flex items-center text-sm text-gray-600 cursor-pointer">
               <input
                 type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
                 className="mr-2"
               />
               Remember me
             </label>
+            <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">
+              Forgot Password?
+            </Link>
           </div>
-          <button
-            type="submit"
-            className="text-sm text-blue-600 hover:text-blue-700 transition"
-          >
-            Forgot Password?
-          </button>
 
           <button
             type="submit"
-            className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition"
+            disabled={isSubmitting}
+            className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition disabled:opacity-60"
           >
-            Login
+            {isSubmitting ? "Logging in..." : "Login"}
           </button>
-
         </form>
 
-        {message && (
-          <p className="text-center text-sm mt-4 text-red-500">{message}</p>
-        )}
-
+        <p className="text-center text-sm mt-4 text-gray-600">
+          Don't have an account?{" "}
+          <Link to="/register" className="text-blue-600 hover:underline">
+            Sign Up
+          </Link>
+        </p>
       </div>
-
     </div>
   );
 };

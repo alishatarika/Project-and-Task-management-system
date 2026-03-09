@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from database.connection import get_db
 from models.Users import Users
 from models.Otp import OTP
@@ -15,28 +14,41 @@ from services.otp_services import _replace_otp
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
+def resolve_user(db: Session, identifier: str) -> Users | None:
+    user = db.query(Users).filter(Users.email == identifier).first()
+    if not user:
+        user = db.query(Users).filter(Users.username == identifier).first()
+    return user
+
+
 @router.post("/verify-otp")
 def verify_otp_endpoint(data: OtpVerifyRequest, db: Session = Depends(get_db)):
-    user = db.query(Users).filter(Users.email == data.email).first()
+    user = resolve_user(db, data.email)
     if not user:
-        raise HTTPException(status_code=404, detail="No account found with this email.")
+        raise HTTPException(status_code=404, detail="No account found.")
+    real_email = user.email
+    if user.is_verified:
+        token = create_access_token({"user_id": user.id})
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Email already verified.",
+                "access_token": token,
+                "user": user.to_dict(),
+            },
+        )
 
-    record = db.query(OTP).filter(
-        OTP.email       == data.email,
-        OTP.is_verified == False,
-    ).order_by(OTP.created_at.desc()).first()
+    record = (
+        db.query(OTP)
+        .filter(
+            OTP.email       == real_email, 
+            OTP.is_verified == False,
+        )
+        .order_by(OTP.created_at.desc())
+        .first()
+    )
 
     if not record:
-        if user.is_verified:
-            token = create_access_token({"user_id": user.id})
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": "Email already verified.",
-                    "access_token": token,
-                    "user": user.to_dict(),
-                },
-            )
         raise HTTPException(
             status_code=400,
             detail="No active OTP found. Please request a new one.",
@@ -49,7 +61,10 @@ def verify_otp_endpoint(data: OtpVerifyRequest, db: Session = Depends(get_db)):
     if datetime.now(timezone.utc) > expires_at:
         db.delete(record)
         db.commit()
-        raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
+        raise HTTPException(
+            status_code=400,
+            detail="OTP has expired. Please request a new one.",
+        )
 
     if record.otp_code != data.otp:
         raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
@@ -72,11 +87,12 @@ def verify_otp_endpoint(data: OtpVerifyRequest, db: Session = Depends(get_db)):
 
 @router.post("/resend-otp")
 def resend_otp(data: OtpResendRequest, db: Session = Depends(get_db)):
-    user = db.query(Users).filter(Users.email == data.email).first()
+    user = resolve_user(db, data.email)
     if not user:
-        raise HTTPException(status_code=404, detail="No account found with this email.")
+        raise HTTPException(status_code=404, detail="No account found.")
     if user.is_verified:
         raise HTTPException(status_code=400, detail="This email is already verified.")
+
     code = _replace_otp(db, user)
     try:
         send_otp_email(user.email, code)

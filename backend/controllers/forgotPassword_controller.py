@@ -13,7 +13,6 @@ from services.otp_services import _replace_otp
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-# ── Password validation ───────────────────────────────────────────────────────
 
 def validate_password(password: str):
     if len(password) < 6:
@@ -28,8 +27,6 @@ def validate_password(password: str):
         raise HTTPException(status_code=400, detail="Must contain a special character.")
 
 
-
-# ── Step 1: Send OTP ──────────────────────────────────────────────────────────
 @router.post("/forgot-password")
 def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
     email = data.email.strip().lower()
@@ -46,7 +43,6 @@ def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
     return {"message": "OTP sent successfully."}
 
 
-# ── Step 2: Verify OTP ────────────────────────────────────────────────────────
 
 @router.post("/verify-forgot-otp")
 def verify_forgot_otp(data: VerifyForgotOtpRequest, db: Session = Depends(get_db)):
@@ -75,8 +71,25 @@ def verify_forgot_otp(data: VerifyForgotOtpRequest, db: Session = Depends(get_db
     db.commit()
     return {"message": "OTP verified successfully."}
 
+@router.post("/resend-forgot-otp")
+def resend_forgot_otp(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Resend a fresh OTP for the forgot-password flow.
+    Uses the same ForgotPasswordRequest schema (just needs email).
+    """
+    email = data.email.strip().lower()
 
-# ── Step 3: Reset Password ────────────────────────────────────────────────────
+    user = db.query(Users).filter(func.lower(Users.email) == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="No account found with this email.")
+    code = _replace_otp(db, user)
+
+    try:
+        send_otp_email(user.email, code)
+    except Exception as e:
+        print("Email send error (non-fatal):", e)
+
+    return {"message": "OTP resent successfully."}
 
 @router.post("/reset-password")
 def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
