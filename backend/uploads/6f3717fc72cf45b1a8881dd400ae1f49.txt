@@ -1,0 +1,241 @@
+Date:19/January/2026
+>Fastapi
+.Creation of fastapi for medicines information using get,post,update and delete method.
+. Learn to connect fastapi with mysql connector
+.Learn about DTO(pydantic models)
+
+
+Date:20/January/2026
+>Folder structure of fastapi
+.Learn to maintain folder structure in fastapi
+.Implementation of ORM models in fastapi
+
+Date:21/January/2026
+>Learn Basics concepts
+.Middlewares
+.Normalization
+.Asynchronous and synchronous server
+.Cross origin status
+.Asgi and wsgi
+
+Date:22/January/2026
+>Authorization concepts
+.Learn to implement authoriztion in fastapi
+
+Date:23/January/2026
+>Implementation of Authorization
+.Implement authorization in fastapi project 
+.Learn to use jwt 
+.Learn about hashing
+
+
+Date:27/January/2026
+>Learning Python Basics and fastapi 
+  .SOLID Principle
+  . Password Validation
+  . Immutable and mutable 
+  . Shallow and deep copy
+  
+Date:28/January/2026
+>Implementation of Authorization in fastapi
+  .Enum
+  .Operation on string ,list ,tuple and sets
+  .Authorization in fastapi
+  .Try and catch implementation in fastapi project
+
+Date:29/January/2026
+> Blog Application Project
+  . Encapsulation
+  .SDLC
+  .Requirement gathering and analysis of fastapi
+  .Preparing DB schema for fastapi project
+ 
+Date:30/January/2026
+>Blog Application Project
+. Login and registration page fronted
+.Blog application setup with database
+
+
+Date:2/February/2026
+>Blog Application Project
+. create post and edit page fronted
+.Functionalities for create ,delete and edit post by creating routers, services 
+. Functionalities for comment section
+.Database connectivity of blog application with post schema.
+
+Date:3/February/2026
+>Blog Application Project
+.Migrations 
+.Comment section functionality
+. Welcome page fronted
+.Work on Profile page of Blog Application
+
+Date:4/February/2026
+>Blog Application Project
+.Done changes as suggested in blog application
+.OTP validation
+.Apply Authorization in routers of Blog Application 
+
+Date:5/February/2026
+>Blog Application Project
+.Image functionality in Blog where user can image with title and content of post.
+.Apply Modular approach in project
+. Learn about indexes in Database 
+.Created Git repository for Blog Application
+
+Date:6/February/2026
+>Basics of JavaScript 
+.Indexing types in Database
+.Learn about JavaScript
+.Datatypes in JavaScript 
+.Function in JavaScript
+.Conditional statements and loops in JavaScript
+.Variables in Javascript
+.Operators in JavaScript
+.Arrays in JavaScript
+
+
+Date:9/February/2026
+>Blog Application Project And JavaScript
+.Added Pagination and Drop Down box in blog application for better functionality.
+.Remove login page and registration page errors and use custom validation in Blog Application .
+.JavaScript(Objects and Prototypes)
+
+Date:10/February/2026
+>Blog Application Project And JavaScript
+.Blog Application Design changes for better UI .
+.Blog Application(Fix Validation Errors ).
+.JavaScript (Array Methods).
+.Solid Principle Examples.
+
+Date:11/February/2026
+>Blog Application Project
+.Corrected registration page form validation errors in blog application.
+.Changes in Blog Application for better functionality (Added functionality for Automatic login after registration )
+.Improve comment section functionality for better user experience in blog application.
+.Added Pagination in blog application for better user experience.
+.Blog Application custom form validation changes in comment section and in post section.
+Study(JavaScript : Operators)
+
+Date:12/February/2026
+>OOPs in JavaScript
+.Cover OOPs concept in JavaScript .
+.Learn About (Getters and Setters in JavaScript).
+.Learn About String Methods in JavaScript.
+
+Date:13/February/2026
+>JavaScript and React
+.JavaScript: Template literals ,destructing(array ,object)
+.JavaScript: Spread and rest operators , Arrow Functions. 
+.Error handling in JavaScript .
+.DOM Manipulation in JavaScript
+.React Environment setup with tailwind CSS.
+
+Date:16/February/2026
+>JavaScript and React
+.JavaScript: Call Backs, Promises and async/await .
+.JavaScript: Fetch and created a dummy API and Fetch data from it. 
+.Difference between JavaScript and typescript , SWC and React Compiler .
+.React folder structure .
+.Learn to connect FastAPI(backend) with React(Fronted)
+
+Date:17/February/2026
+>Cover React Concepts 
+.Created fronted in react to fetch blog (title and content) from blog application API.
+.Learn about react components ,interface in typescript. 
+.React Hooks and its State.
+.Export and Import in React.
+.React Hook Form.
+.React Basic topics.
+
+Date:18/February/2026
+>Cover React Concepts and Blog Application in React
+.Created fronted in react for login and registration page for Blog Application .
+.Setup Backend for Blog Application for login and registration page(React and fastapi). 
+.Setup Backend for home page for Blog Application.
+.Setup Backend for create post page.
+.Create a page where users can publish their post in React .
+.React Basic topics.
+
+
+Date:19/February/2026
+>Cover React Concepts and Blog Application in React
+.React functional components .
+.React class components.
+.React Hooks and its state usestate ,useeffect . 
+.Edit post page fronted in react.
+.Blog Application work on logout button and authorization .
+
+
+Date:20/February/2026
+>Cover React Concepts
+.Props (passing, destructuring, children).
+.State Management with useState and Conditional Rendering. 
+.useEffect (side effects, dependency array, cleanup).
+.Forms and Controlled Components.
+.useRef Hook.
+
+
+
+Date:23/February/2026
+>Cover React Concepts
+.Context API in react and Prop Drilling.
+.Custom Hooks. 
+.Performance Optimization (React.memo, useMemo, useCallback.
+.API Integration (fetch/axios, loading & error states.
+.Work on Forget Password Functionality for Blog Application.
+
+
+Date:24/February/2026
+>Cover React Concepts
+.Learn React concepts and create dfd , er-diagram and flow chart for E-commerce website.
+
+
+Date:25/February/2026
+>E-commerce website
+.Setup of Backend for Ecommerce website create Routers , Controllers and Services.
+
+
+Date:26/February/2026
+>E-commerce website
+.Work on Fronted part for E-commerce website using React created home page , login , registration and cart page etc.
+
+
+
+Date:27/February/2026
+>E-commerce website
+.Work on E-commerce website migrations , middlewares and authorization.
+
+Date:5/March/2026
+>Project and Task Management assignment
+.Requirement Analysis of Project and Task Management system .
+.Make DB schema and Models for Project and Task Management system .
+.Work on Backend of login and registration page created controllers and services .
+.Created Pydantic Schemas .
+.Work on Otp validation and Forgot password functionality .
+
+
+Date:6/March/2026
+>Project and Task Management assignment
+.Work on Backend created controllers and services for userRoles .
+.Work on Backend created controllers and services for Project and ProjectMember.
+.Work on Backend created controllers and services for Task assigned and Task attachement.
+.Work on Backend created controllers and services for comments , activity and notifications. 
+
+
+
+Date:9/March/2026
+>Project and Task Management assignment
+.Work on Fronted created login page. 
+.Work on Fronted created Registration page.
+.Work on Fronted created Forgot-password page.
+.Work on Fronted created verify otp page.
+.Work on Fronted created profile page.
+
+
+
+
+
+
+
+
