@@ -49,15 +49,12 @@ def update(
     db: Session = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
-    """
-    Edit a comment.
-    Permission: comment author | project creator | task assigner.
-    """
+    
     comment = update_comment(
         db,
         comment_id=comment_id,
         new_text=data.comment,
-        requesting_user_id=current_user.id,   # ← pass authenticated user
+        requesting_user_id=current_user.id,   
     )
     return comment.to_dict()
 
@@ -68,14 +65,10 @@ def delete(
     db: Session = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
-    """
-    Delete a comment.
-    Permission: comment author | project creator | task assigner.
-    """
     comment = delete_comment(
         db,
         comment_id=comment_id,
-        requesting_user_id=current_user.id,   # ← pass authenticated user
+        requesting_user_id=current_user.id,   
     )
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")

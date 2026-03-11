@@ -52,7 +52,6 @@ def update_role(
     return {"message": "Role updated", "data": updated_role.to_dict()}
 
 
-# DELETE ROLE (Admin Only)
 @router.delete("/{role_id}")
 def delete_role(
     role_id: int,

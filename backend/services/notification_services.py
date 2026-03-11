@@ -38,7 +38,7 @@ def get_user_notifications(db: Session, user_id: int):
     return db.query(Notification).filter(
         Notification.user_id == user_id,
         Notification.deleted_at == None
-    ).all()
+    ).order_by(Notification.created_at.desc()).all()
 
 
 def get_notification(db: Session, id: int):

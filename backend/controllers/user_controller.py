@@ -15,10 +15,6 @@ from models.Users import Users
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-
-
-# ── READ ALL ─────────────────────────────────────────────────────
-
 @router.get("/")
 def get_all(
     db: Session = Depends(get_db),
@@ -28,7 +24,7 @@ def get_all(
     return [u.to_dict() for u in users]
 
 
-# ── READ ONE ─────────────────────────────────────────────────────
+
 
 @router.get("/me")
 def get_me(current_user: Users = Depends(get_current_user)):
@@ -48,7 +44,6 @@ def get(
     return user.to_dict()
 
 
-# ── UPDATE ───────────────────────────────────────────────────────
 
 @router.put("/{user_id}")
 def update(
@@ -74,7 +69,6 @@ def change_password(
     return user.to_dict()
 
 
-# ── DELETE ───────────────────────────────────────────────────────
 
 @router.delete("/{user_id}")
 def delete(

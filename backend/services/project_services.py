@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import func
 
 
-def create_project(db: Session, data):
+def create_project(db: Session, data, current_user: Users):
     user = db.query(Users).filter(
         Users.id == data.owner_id,
         Users.is_verified == True,
@@ -33,7 +33,7 @@ def create_project(db: Session, data):
     project = Project(
         name=data.name,
         description=data.description,
-        owner_id=data.owner_id
+        owner_id=current_user.id
     )
 
     db.add(project)
@@ -56,12 +56,16 @@ def get_project(db: Session, project_id: int):
     ).first()
 
 
-def update_project(db: Session, project_id: int, data):
+def update_project(db: Session, project_id: int, data, current_user: Users):
 
     project = get_project(db, project_id)
 
     if not project:
         return None
+
+    if project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the project creator can update this project")
+
     if data.name:
 
         existing_project = db.query(Project).filter(
@@ -86,11 +90,14 @@ def update_project(db: Session, project_id: int, data):
     return project
 
 
-def delete_project(db: Session, project_id: int):
+def delete_project(db: Session, project_id: int, current_user: Users):
     project = get_project(db, project_id)
 
     if not project:
         return None
+
+    if project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the project creator can delete this project")
 
     project.deleted_at = datetime.now(timezone.utc)
     db.commit()

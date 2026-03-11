@@ -15,7 +15,7 @@ def add(
     db: Session = Depends(get_db),
     current_user: Users = Depends(get_current_user)
 ):
-    member = add_member(db, data.project_id, data.user_id)
+    member = add_member(db, data.project_id, data.user_id, current_user)
     return member.to_dict()
 
 
@@ -48,7 +48,7 @@ def update(
     db: Session = Depends(get_db),
     current_user: Users = Depends(get_current_user)
 ):
-    member = update_member(db, member_id, data)
+    member = update_member(db, member_id, data, current_user)
     return member.to_dict()
 
 
@@ -59,7 +59,7 @@ def delete(
     db: Session = Depends(get_db),
     current_user: Users = Depends(get_current_user)
 ):
-    member = remove_member(db, member_id)
+    member = remove_member(db, member_id, current_user)
 
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")

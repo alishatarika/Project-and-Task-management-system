@@ -56,8 +56,8 @@ const ProjectDetail = () => {
   const [desc, setDesc] = useState("");
   const [assignee, setAssignee] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [taskStatus, setTaskStatus] = useState("todo");
-  const [priority, setPriority] = useState("medium");
+  const [taskStatus, setTaskStatus] = useState("");
+  const [priority, setPriority] = useState("");
   const [editingTask, setEditingTask] = useState<number | null>(null);
 
   const formatDate = (date: string) =>
@@ -69,6 +69,9 @@ const ProjectDetail = () => {
 
   const isOverdue = (d: string, status: string) =>
     d && d.slice(0, 10) < todayStr && status !== "done";
+
+  const isMemberOrOwner = project?.owner_id === currentUser?.id ||
+    members.some((m: any) => m.user_id === currentUser?.id);
 
   useEffect(() => {
     if (!isLoggedIn()) {
@@ -197,22 +200,37 @@ const ProjectDetail = () => {
     setShowTaskModal(true);
   };
 
-  const deleteTask = async (taskId: number) => {
+  const deleteTask = (taskId: number) => {
 
-    if (!window.confirm("Delete this task?")) return;
+    toast((t) => (
+      <div>
+        <p className="mb-2 font-medium">Delete this task?</p>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              toast.dismiss(t.id);
+              try {
+                await axios.delete(`${BASE}/tasks/${taskId}`, { headers: authHeaders() });
+                setTasks(tasks.filter(t => t.id !== taskId));
+                toast.success("Task deleted");
+              } catch {
+                toast.error("Delete failed");
+              }
+            }}
+            className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+          >
+            Yes, Delete
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="px-3 py-1 bg-gray-300 rounded text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ), { duration: 10000 });
 
-    try {
-
-      await axios.delete(`${BASE}/tasks/${taskId}`, {
-        headers: authHeaders(),
-      });
-
-      setTasks(tasks.filter(t => t.id !== taskId));
-      toast.success("Task deleted");
-
-    } catch {
-      toast.error("Delete failed");
-    }
   };
 
   const getUsername = (uid: number) =>
@@ -246,12 +264,14 @@ const ProjectDetail = () => {
 
       </div>
 
-      <button
-        onClick={() => setShowTaskModal(true)}
-        className="bg-blue-600 text-white px-4 py-2 rounded mb-6"
-      >
-        Create Task
-      </button>
+      {isMemberOrOwner && (
+        <button
+          onClick={() => setShowTaskModal(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded mb-6"
+        >
+          Create Task
+        </button>
+      )}
 
       <h2 className="text-xl font-semibold mb-4">
         Tasks ({tasks.length})
@@ -315,19 +335,23 @@ const ProjectDetail = () => {
                     Open
                   </Link>
 
-                  <button
-                    onClick={() => editTask(task)}
-                    className="text-blue-600"
-                  >
-                    Edit
-                  </button>
+                  {isMemberOrOwner && (
+                    <button
+                      onClick={() => editTask(task)}
+                      className="text-blue-600"
+                    >
+                      Edit
+                    </button>
+                  )}
 
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    className="text-red-600"
-                  >
-                    Delete
-                  </button>
+                  {isMemberOrOwner && (
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="text-red-600"
+                    >
+                      Delete
+                    </button>
+                  )}
 
                 </div>
 
@@ -393,6 +417,7 @@ const ProjectDetail = () => {
                   value={taskStatus}
                   onChange={e => setTaskStatus(e.target.value)}
                 >
+                  <option value="">Task Status</option>
                   {TASK_STATUS_OPTIONS.map(s => (
                     <option key={s} value={s}>
                       {STATUS_LABELS[s]}
@@ -404,7 +429,7 @@ const ProjectDetail = () => {
                   className="border p-2 rounded"
                   value={priority}
                   onChange={e => setPriority(e.target.value)}
-                >
+                ><option value="">Task Priority</option>
                   {PRIORITY_OPTIONS.map(p => (
                     <option key={p} value={p}>
                       {PRIORITY_LABELS[p]}
@@ -414,13 +439,17 @@ const ProjectDetail = () => {
 
               </div>
 
-              <input
-                type="date"
-                min={todayStr}
-                className="border p-2 rounded w-full"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-              />
+             <input
+      type="text"
+       placeholder="Due Date"
+       className="border p-2 rounded w-full"
+      onFocus={(e) => (e.target.type = "date")}
+        onBlur={(e) => {
+    if (!e.target.value) e.target.type = "text";
+       }}
+      value={dueDate}
+     onChange={(e) => setDueDate(e.target.value)}
+     />
 
             </div>
 

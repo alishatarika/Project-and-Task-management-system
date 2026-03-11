@@ -73,10 +73,6 @@ def verify_forgot_otp(data: VerifyForgotOtpRequest, db: Session = Depends(get_db
 
 @router.post("/resend-forgot-otp")
 def resend_forgot_otp(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
-    """
-    Resend a fresh OTP for the forgot-password flow.
-    Uses the same ForgotPasswordRequest schema (just needs email).
-    """
     email = data.email.strip().lower()
 
     user = db.query(Users).filter(func.lower(Users.email) == email).first()

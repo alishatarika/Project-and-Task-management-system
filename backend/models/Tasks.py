@@ -20,8 +20,6 @@ class Task(Base):
     created_at  = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at  = Column(DateTime(timezone=True), nullable=True)
     deleted_at  = Column(DateTime(timezone=True), nullable=True)
-
-    # Relationships
     project     = relationship("Project", back_populates="tasks")
     creator     = relationship("Users", back_populates="created_tasks", foreign_keys=[created_by])
     assignee    = relationship("Users", back_populates="assigned_tasks", foreign_keys=[assigned_to])

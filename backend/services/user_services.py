@@ -5,22 +5,21 @@ from fastapi import HTTPException
 from utils.hashing import verify_password, hash_password
 
 
-# ── READ ─────────────────────────────────────────────────────────
 
 def get_users(db: Session):
     return db.query(Users).filter(
-        Users.is_verified == True,   # only verified
-        Users.status      == True,   # only active
-        Users.deleted_at  == None    # not deleted
+        Users.is_verified == True,   
+        Users.status      == True,   
+        Users.deleted_at  == None    
     ).all()
 
 
 def get_user(db: Session, user_id: int):
     return db.query(Users).filter(
         Users.id          == user_id,
-        Users.is_verified == True,   # only verified
-        Users.status      == True,   # only active
-        Users.deleted_at  == None    # not deleted
+        Users.is_verified == True,   
+        Users.status      == True,   
+        Users.deleted_at  == None   
     ).first()
 
 
@@ -31,7 +30,7 @@ def get_user_by_email(db: Session, email: str):
     ).first()
 
 
-# ── UPDATE ───────────────────────────────────────────────────────
+
 
 def update_user(db: Session, user_id: int, data):
     user = get_user(db, user_id)
@@ -62,7 +61,7 @@ def update_password(db: Session, user_id: int, data):
     return user
 
 
-# ── DELETE (soft) ────────────────────────────────────────────────
+
 
 def delete_user(db: Session, user_id: int):
     user = get_user(db, user_id)

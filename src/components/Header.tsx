@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { clearAuth, getUser, isLoggedIn, getToken } from "../utils/auth";
-import { toast } from "react-hot-toast";
 
 const BASE = "http://localhost:8000";
 
@@ -12,13 +11,8 @@ const Header = () => {
 
   const [user, setUser] = useState<any>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
 
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-
-  const [selectedUser, setSelectedUser] = useState("");
-  const [message, setMessage] = useState("");
 
   const axiosConfig = () => ({
     headers: {
@@ -49,16 +43,6 @@ const Header = () => {
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      const res = await axios.get(`${BASE}/users/`, axiosConfig());
-      const currentUser = getUser<any>();
-      setUsers(res.data.filter((u: any) => u.id !== currentUser?.id));
-    } catch (err) {
-      console.log("User fetch error:", err);
-    }
-  };
-
   const markSeen = async (id: number) => {
     try {
       await axios.put(
@@ -82,32 +66,6 @@ const Header = () => {
         .filter((n) => n.is_seen === false)
         .forEach((n) => markSeen(n.id));
     }
-  };
-
-  const sendNotification = async () => {
-    if (!selectedUser || !message) {
-      toast.error("Please select user and enter message"); // ✅ toast instead of alert
-      return;
-    }
-    try {
-      await axios.post(
-        `${BASE}/notifications/`,
-        { user_id: Number(selectedUser), message },
-        axiosConfig()
-      );
-      toast.success("Notification sent"); // ✅ toast instead of alert
-      setMessage("");
-      setSelectedUser("");
-      setShowModal(false);
-    } catch (err) {
-      toast.error("Failed to send notification"); // ✅ toast instead of alert
-      console.log("Send notification error:", err);
-    }
-  };
-
-  const openModal = () => {
-    fetchUsers();
-    setShowModal(true);
   };
 
   const handleLogout = () => {
@@ -182,21 +140,12 @@ const Header = () => {
                           <p className="text-sm font-medium">{n.message}</p>
                           <div className="flex justify-between items-center mt-1">
                             <small className="text-gray-400">
-                              From: {n.sender?.username || `User #${n.send_by}`}
-                            </small>
-                            <small className="text-gray-400">
                               {formatTime(n.created_at)}
                             </small>
                           </div>
                         </div>
                       ))}
 
-                      <button
-                        onClick={openModal}
-                        className="w-full p-2 bg-gray-100 hover:bg-gray-200 text-sm border-t"
-                      >
-                        + Send Notification
-                      </button>
                     </div>
                   )}
                 </div>
@@ -219,49 +168,6 @@ const Header = () => {
           </div>
         </div>
       </header>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded w-96">
-            <h2 className="text-lg font-semibold mb-4">Send Notification</h2>
-            <select
-              value={selectedUser}
-              onChange={(e) => setSelectedUser(e.target.value)}
-              className="w-full border p-2 mb-3 rounded"
-            >
-              <option value="">Select User</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.username || u.name || u.email}
-                </option>
-              ))}
-            </select>
-
-            <textarea
-              placeholder="Message"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="w-full border p-2 mb-3 rounded"
-              rows={3}
-            />
-
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-3 py-1 bg-gray-400 text-white rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={sendNotification}
-                className="px-3 py-1 bg-blue-600 text-white rounded"
-              >
-                Send
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };

@@ -3,10 +3,21 @@ from models.TaskComments import TaskComment
 from datetime import datetime, timezone
 from models.Tasks import Task
 from models.Users import Users
-from models.Project import Project          
-from models.ProjectMembers import ProjectMember  
+from models.Project import Project
+from models.ProjectMembers import ProjectMember
 from fastapi import HTTPException
 
+
+def _is_project_member_or_owner(db: Session, project_id: int, user_id: int) -> bool:
+    project = db.query(Project).filter(Project.id == project_id, Project.deleted_at == None).first()
+    if project and project.owner_id == user_id:
+        return True
+    member = db.query(ProjectMember).filter(
+        ProjectMember.project_id == project_id,
+        ProjectMember.user_id == user_id,
+        ProjectMember.deleted_at == None
+    ).first()
+    return member is not None
 
 
 def _get_active_user(db: Session, user_id: int) -> Users:
@@ -36,7 +47,7 @@ def _can_manage_comment(
     comment: TaskComment,
     requesting_user_id: int
 ) -> bool:
-   
+
     if comment.user_id == requesting_user_id:
         return True
 
@@ -46,15 +57,18 @@ def _can_manage_comment(
     if task.assigned_by == requesting_user_id:
         return True
     project = db.query(Project).filter(Project.id == task.project_id).first()
-    if project and project.created_by == requesting_user_id:
+    if project and project.owner_id == requesting_user_id:
         return True
 
     return False
 
 
 def add_comment(db: Session, task_id: int, user_id: int, comment: str) -> TaskComment:
-    _get_active_task(db, task_id)
+    task = _get_active_task(db, task_id)
     _get_active_user(db, user_id)
+
+    if not _is_project_member_or_owner(db, task.project_id, user_id):
+        raise HTTPException(status_code=403, detail="Only project members or owner can comment on tasks")
 
     new_comment = TaskComment(
         task_id=task_id,

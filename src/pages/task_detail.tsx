@@ -31,7 +31,7 @@ const TaskDetail = () => {
   const [attachments, setAttachments] = useState<any[]>([]);
   const [loading,     setLoading]     = useState(true);
 
-  // Edit task
+
   const [editingTask, setEditingTask] = useState(false);
   const [title,       setTitle]       = useState("");
   const [desc,        setDesc]        = useState("");
@@ -40,12 +40,16 @@ const TaskDetail = () => {
   const [taskStatus,  setTaskStatus]  = useState("todo");
   const [priority,    setPriority]    = useState("medium");
 
-  // Comments
+
   const [commentText,        setCommentText]        = useState("");
   const [editingCommentId,   setEditingCommentId]   = useState<number | null>(null);
   const [editingCommentText, setEditingCommentText] = useState("");
   const [openMenuId,         setOpenMenuId]         = useState<number | null>(null);
   const [showComments,       setShowComments]       = useState(false);
+
+  
+  const isMemberOrOwner = project?.owner_id === currentUser?.id ||
+    members.some((m: any) => m.user_id === currentUser?.id);
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
@@ -55,7 +59,6 @@ const TaskDetail = () => {
     loadData();
   }, [id]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handler = () => setOpenMenuId(null);
     document.addEventListener("click", handler);
@@ -99,18 +102,17 @@ const TaskDetail = () => {
 
   const getUsername = (uid: number) => users.find(u => u.id === uid)?.username ?? "User";
 
-  // Returns true if current user can edit/delete the comment
   const canManageComment = (comment: any): boolean => {
     if (!currentUser) return false;
     const uid = currentUser.id;
     return (
-      comment.user_id    === uid ||  // comment author
-      project?.created_by === uid || // project creator
-      task?.assigned_by  === uid     // task assigner
+      comment.user_id    === uid ||
+      project?.owner_id  === uid ||
+      task?.assigned_by  === uid
     );
   };
 
-  // ── Task ──────────────────────────────────────────────────────────────────
+  
   const saveTask = async () => {
     if (!title.trim()) { toast.error("Task title required"); return; }
     if (dueDate && dueDate < todayStr) { toast.error("Due date cannot be in the past"); return; }
@@ -139,7 +141,6 @@ const TaskDetail = () => {
     setEditingTask(true);
   };
 
-  // ── Comments ──────────────────────────────────────────────────────────────
   const addComment = async () => {
     if (!commentText.trim()) return;
     try {
@@ -182,19 +183,39 @@ const TaskDetail = () => {
     }
   };
 
-  const deleteComment = async (commentId: number) => {
-    if (!window.confirm("Delete this comment?")) return;
+  const deleteComment = (commentId: number) => {
     setOpenMenuId(null);
-    try {
-      await axios.delete(`${BASE}/task-comments/${commentId}`, { headers: authHeaders() });
-      setComments(prev => prev.filter(c => c.id !== commentId));
-      toast.success("Comment deleted");
-    } catch {
-      toast.error("Failed to delete comment");
-    }
+    toast((t) => (
+      <div>
+        <p className="mb-2 font-medium">Delete this comment?</p>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              toast.dismiss(t.id);
+              try {
+                await axios.delete(`${BASE}/task-comments/${commentId}`, { headers: authHeaders() });
+                setComments(prev => prev.filter(c => c.id !== commentId));
+                toast.success("Comment deleted");
+              } catch {
+                toast.error("Failed to delete comment");
+              }
+            }}
+            className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+          >
+            Yes, Delete
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="px-3 py-1 bg-gray-300 rounded text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ), { duration: 10000 });
   };
 
-  // ── Attachments ───────────────────────────────────────────────────────────
+  
   const uploadFile = async (file: File) => {
     if (file.size > 10 * 1024 * 1024) { toast.error("File exceeds 10 MB"); return; }
     const form = new FormData();
@@ -214,15 +235,35 @@ const TaskDetail = () => {
     }
   };
 
-  const deleteAttachment = async (attachId: number) => {
-    if (!window.confirm("Remove this attachment?")) return;
-    try {
-      await axios.delete(`${BASE}/task-attachments/${attachId}`, { headers: authHeaders() });
-      setAttachments(prev => prev.filter(a => a.id !== attachId));
-      toast.success("Attachment removed");
-    } catch {
-      toast.error("Failed to remove attachment");
-    }
+  const deleteAttachment = (attachId: number) => {
+    toast((t) => (
+      <div>
+        <p className="mb-2 font-medium">Remove this attachment?</p>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              toast.dismiss(t.id);
+              try {
+                await axios.delete(`${BASE}/task-attachments/${attachId}`, { headers: authHeaders() });
+                setAttachments(prev => prev.filter(a => a.id !== attachId));
+                toast.success("Attachment removed");
+              } catch {
+                toast.error("Failed to remove attachment");
+              }
+            }}
+            className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+          >
+            Yes, Remove
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="px-3 py-1 bg-gray-300 rounded text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ), { duration: 10000 });
   };
 
   if (loading)
@@ -234,20 +275,20 @@ const TaskDetail = () => {
   return (
     <div className="max-w-6xl mx-auto p-6">
 
-      {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <Link to={`/projects/${task.project_id}`} className="text-blue-600 text-sm">
           ← {project?.name || "Back to Project"}
         </Link>
-        <button
-          onClick={startEditTask}
-          className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
-        >
-          Edit Task
-        </button>
+        {isMemberOrOwner && (
+          <button
+            onClick={startEditTask}
+            className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+          >
+            Edit Task
+          </button>
+        )}
       </div>
 
-      {/* Edit Task Modal */}
       {editingTask && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
@@ -317,31 +358,27 @@ const TaskDetail = () => {
 
       <div className="grid md:grid-cols-3 gap-6">
 
-        {/* Left Section */}
         <div className="md:col-span-2 space-y-6">
-
-          {/* Comments */}
           <div className="bg-white shadow rounded-xl p-6">
             <h2 className="font-semibold text-lg mb-4">Comments ({comments.length})</h2>
+            {isMemberOrOwner && (
+              <div className="flex gap-2 mb-4">
+                <input
+                  className="border p-2 rounded flex-1"
+                  placeholder="Write a comment..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") addComment(); }}
+                />
+                <button
+                  onClick={addComment}
+                  className="bg-blue-500 text-white px-4 rounded"
+                >
+                  Post
+                </button>
+              </div>
+            )}
 
-            {/* New comment input — always visible */}
-            <div className="flex gap-2 mb-4">
-              <input
-                className="border p-2 rounded flex-1"
-                placeholder="Write a comment..."
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") addComment(); }}
-              />
-              <button
-                onClick={addComment}
-                className="bg-blue-500 text-white px-4 rounded"
-              >
-                Post
-              </button>
-            </div>
-
-            {/* Toggle to show/hide comment list */}
             <button
               onClick={() => setShowComments(prev => !prev)}
               className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-3"
@@ -358,8 +395,6 @@ const TaskDetail = () => {
 
                 {comments.map((c) => (
                   <div key={c.id} className="border p-3 rounded">
-
-                    {/* Comment header */}
                     <div className="flex justify-between items-start">
                       <p className="text-xs text-gray-400">
                         <span className="font-semibold text-gray-700">
@@ -371,7 +406,6 @@ const TaskDetail = () => {
                         })}
                       </p>
 
-                      {/* ⋯ dropdown — only for permitted users */}
                       {canManageComment(c) && editingCommentId !== c.id && (
                         <div
                           className="relative"
@@ -404,7 +438,6 @@ const TaskDetail = () => {
                       )}
                     </div>
 
-                    {/* Comment body */}
                     {editingCommentId === c.id ? (
                       <div className="mt-2 space-y-2">
                         <textarea
@@ -439,37 +472,40 @@ const TaskDetail = () => {
             )}
           </div>
 
-          {/* Attachments */}
           <div className="bg-white shadow rounded-xl p-6">
             <h2 className="font-semibold text-lg mb-4">Attachments ({attachments.length})</h2>
 
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); }}
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-gray-100 px-4 py-2 rounded mb-4"
-            >
-              Upload File
-            </button>
+            {isMemberOrOwner && (
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); }}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-gray-100 px-4 py-2 rounded mb-4"
+                >
+                  Upload File
+                </button>
+              </>
+            )}
 
             {attachments.map((a) => (
               <div key={a.id} className="flex items-center justify-between border p-3 rounded mb-2">
                 <p className="text-sm">{a.file_name}</p>
                 <div className="flex gap-3">
                   <a href={`${BASE}${a.file_path}`} download className="text-blue-600 text-sm">Download</a>
-                  <button onClick={() => deleteAttachment(a.id)} className="text-red-500 text-sm">Remove</button>
+                  {isMemberOrOwner && (
+                    <button onClick={() => deleteAttachment(a.id)} className="text-red-500 text-sm">Remove</button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
 
         </div>
-
-        {/* Sidebar */}
         <div className="space-y-4">
           <div className="bg-white shadow rounded-xl p-4">
             <h3 className="font-semibold mb-3">Details</h3>

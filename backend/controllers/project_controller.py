@@ -11,7 +11,7 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 
 @router.post("/")
 def create(data: ProjectCreate, db: Session = Depends(get_db),current_user: Users = Depends(get_current_user)):
-    project = create_project(db, data)
+    project = create_project(db, data, current_user)
     return project.to_dict()
 
 
@@ -33,7 +33,7 @@ def get(project_id: int, db: Session = Depends(get_db),current_user: Users = Dep
 
 @router.put("/{project_id}")
 def update(project_id: int, data: ProjectUpdate, db: Session = Depends(get_db),current_user: Users = Depends(get_current_user)):
-    project = update_project(db, project_id, data)
+    project = update_project(db, project_id, data, current_user)
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -43,7 +43,7 @@ def update(project_id: int, data: ProjectUpdate, db: Session = Depends(get_db),c
 
 @router.delete("/{project_id}")
 def delete(project_id: int, db: Session = Depends(get_db),current_user: Users = Depends(get_current_user)):
-    project = delete_project(db, project_id)
+    project = delete_project(db, project_id, current_user)
 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")

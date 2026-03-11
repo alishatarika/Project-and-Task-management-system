@@ -11,7 +11,7 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 @router.post("/")
 def create(data: TaskCreate, db: Session = Depends(get_db),current_user: Users = Depends(get_current_user)):
-    task = create_task(db, data)
+    task = create_task(db, data, current_user)
     return task.to_dict()
 
 
@@ -33,7 +33,7 @@ def get(task_id: int, db: Session = Depends(get_db),current_user: Users = Depend
 
 @router.put("/{task_id}")
 def update(task_id: int, data: TaskUpdate, db: Session = Depends(get_db),current_user: Users = Depends(get_current_user)):
-    task = update_task(db, task_id, data)
+    task = update_task(db, task_id, data, current_user)
 
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -43,7 +43,7 @@ def update(task_id: int, data: TaskUpdate, db: Session = Depends(get_db),current
 
 @router.delete("/{task_id}")
 def delete(task_id: int, db: Session = Depends(get_db),current_user: Users = Depends(get_current_user)):
-    task = delete_task(db, task_id)
+    task = delete_task(db, task_id, current_user)
 
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")

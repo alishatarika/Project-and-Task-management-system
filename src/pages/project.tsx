@@ -15,6 +15,7 @@ type Project = {
   name: string;
   description: string;
   status: boolean;
+  owner_id: number;
 };
 
 type Member = {
@@ -161,36 +162,43 @@ const ProjectPage: React.FC = () => {
         return;
       }
 
-      toast.error("Project with this name already exists or update failed");
+      toast.error(err?.response?.data?.detail || "Update failed");
 
     }
 
   };
 
-  const handleDelete = async(id:number)=>{
+  const handleDelete = (id:number)=>{
 
-    if(!confirm("Delete project?")) return;
-
-    try{
-
-      await axios.delete(`${PROJECT_API}${id}/`,{
-        headers:authHeaders()
-      });
-
-      setProjects(prev=>prev.filter(p=>p.id!==id));
-
-      toast.success("Project deleted");
-
-    }catch(err:any){
-
-      if(err?.response?.status === 401){
-        handle401();
-        return;
-      }
-
-      toast.error("Delete failed");
-
-    }
+    toast((t) => (
+      <div>
+        <p className="mb-2 font-medium">Delete this project?</p>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              toast.dismiss(t.id);
+              try{
+                await axios.delete(`${PROJECT_API}${id}/`,{headers:authHeaders()});
+                setProjects(prev=>prev.filter(p=>p.id!==id));
+                toast.success("Project deleted");
+              }catch(err:any){
+                if(err?.response?.status === 401){ handle401(); return; }
+                toast.error(err?.response?.data?.detail || "Delete failed");
+              }
+            }}
+            className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+          >
+            Yes, Delete
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="px-3 py-1 bg-gray-300 rounded text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ), { duration: 10000 });
 
   };
 
@@ -267,33 +275,46 @@ const ProjectPage: React.FC = () => {
 
     }catch(err:any){
 
-      toast.error("Add member failed");
+      toast.error(err?.response?.data?.detail || "Add member failed");
 
     }
 
   };
 
-  const handleRemoveMember = async(id:number)=>{
+  const handleRemoveMember = (id:number)=>{
 
-    if(!confirm("Remove member?")) return;
-
-    try{
-
-      await axios.delete(`${MEMBERS_API}${id}/`,{
-        headers:authHeaders()
-      });
-
-      setMembers(prev=>prev.filter(m=>m.id!==id));
-
-      toast.success("Member removed");
-
-    }catch(err:any){
-
-      toast.error("Remove member failed");
-
-    }
+    toast((t) => (
+      <div>
+        <p className="mb-2 font-medium">Remove this member?</p>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              toast.dismiss(t.id);
+              try{
+                await axios.delete(`${MEMBERS_API}${id}/`,{headers:authHeaders()});
+                setMembers(prev=>prev.filter(m=>m.id!==id));
+                toast.success("Member removed");
+              }catch(err:any){
+                toast.error(err?.response?.data?.detail || "Remove member failed");
+              }
+            }}
+            className="px-3 py-1 bg-red-500 text-white rounded text-sm"
+          >
+            Yes, Remove
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="px-3 py-1 bg-gray-300 rounded text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ), { duration: 10000 });
 
   };
+
+  const isOwner = (project: Project) => project.owner_id === user?.id;
 
   const indexOfLastProject = currentPage * projectsPerPage;
   const indexOfFirstProject = indexOfLastProject - projectsPerPage;
@@ -334,26 +355,32 @@ const ProjectPage: React.FC = () => {
 
             <div className="flex gap-3 mt-3">
 
-              <button
-                onClick={()=>loadMembers(project)}
-                className="text-indigo-600 text-sm"
-              >
-                Members
-              </button>
+              {isOwner(project) && (
+                <button
+                  onClick={()=>loadMembers(project)}
+                  className="text-indigo-600 text-sm"
+                >
+                  Members
+                </button>
+              )}
 
-              <button
-                onClick={()=>startEdit(project)}
-                className="text-blue-500 text-sm"
-              >
-                Edit
-              </button>
+              {isOwner(project) && (
+                <button
+                  onClick={()=>startEdit(project)}
+                  className="text-blue-500 text-sm"
+                >
+                  Edit
+                </button>
+              )}
 
-              <button
-                onClick={()=>handleDelete(project.id)}
-                className="text-red-500 text-sm"
-              >
-                Delete
-              </button>
+              {isOwner(project) && (
+                <button
+                  onClick={()=>handleDelete(project.id)}
+                  className="text-red-500 text-sm"
+                >
+                  Delete
+                </button>
+              )}
 
             </div>
 
@@ -529,7 +556,7 @@ const ProjectPage: React.FC = () => {
         </span>
 
         <button
-          disabled={currentPage === totalPages}
+          disabled={currentPage === totalPages || totalPages === 0}
           onClick={()=>setCurrentPage(prev=>prev+1)}
           className="bg-gray-300 px-3 py-1 rounded disabled:opacity-50"
         >
