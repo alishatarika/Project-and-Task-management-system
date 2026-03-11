@@ -45,7 +45,6 @@ def get_user_notifications(
     notifications = notification_services.get_user_notifications(db, user_id)
     return [n.to_dict() for n in notifications]
 
-
 @router.put("/{id}")
 def update_notification(
     id: int,
@@ -63,6 +62,8 @@ def update_notification(
         update_data["message"] = data.message
     if data.status is not None:
         update_data["status"] = data.status
+    if data.is_seen is not None:                  
+        update_data["is_seen"] = data.is_seen    
 
     updated = notification_services.update_notification(db, notification, update_data)
     return {

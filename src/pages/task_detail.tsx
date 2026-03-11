@@ -16,30 +16,6 @@ const STATUS_LABELS: Record<string, string> = {
 const PRIORITY_LABELS: Record<string, string> = {
   low: "Low", medium: "Medium", high: "High", critical: "Critical",
 };
-const STATUS_COLORS: Record<string, string> = {
-  todo: "bg-gray-100 text-gray-600",
-  in_progress: "bg-blue-100 text-blue-600",
-  review: "bg-yellow-100 text-yellow-600",
-  done: "bg-green-100 text-green-600",
-};
-const PRIORITY_COLORS: Record<string, string> = {
-  low: "bg-green-100 text-green-600",
-  medium: "bg-yellow-100 text-yellow-600",
-  high: "bg-red-100 text-red-600",
-  critical: "bg-purple-100 text-purple-600",
-};
-
-const getFileIcon = (name: string) => {
-  const ext = name.split(".").pop()?.toLowerCase();
-  if (["jpg","jpeg","png","gif","webp","svg"].includes(ext!)) return "🖼️";
-  if (ext === "pdf") return "📄";
-  if (["doc","docx"].includes(ext!)) return "📝";
-  if (["xls","xlsx","csv"].includes(ext!)) return "📊";
-  if (["zip","rar","7z"].includes(ext!)) return "🗜️";
-  return "📎";
-};
-
-const isPreviewable = (name: string) => /\.(jpg|jpeg|png|gif|webp|svg|pdf)$/i.test(name);
 
 const TaskDetail = () => {
   const { id } = useParams();
@@ -55,7 +31,7 @@ const TaskDetail = () => {
   const [attachments, setAttachments] = useState<any[]>([]);
   const [loading,     setLoading]     = useState(true);
 
-  // Edit form
+  // Edit task
   const [editingTask, setEditingTask] = useState(false);
   const [title,       setTitle]       = useState("");
   const [desc,        setDesc]        = useState("");
@@ -65,29 +41,26 @@ const TaskDetail = () => {
   const [priority,    setPriority]    = useState("medium");
 
   // Comments
-  const [commentText, setCommentText] = useState("");
-
-  // Attachments
-  const [uploading,      setUploading]      = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [dragOver,       setDragOver]       = useState(false);
-  const [previewUrl,     setPreviewUrl]     = useState<string | null>(null);
-  const [previewName,    setPreviewName]    = useState("");
-  
-
-  const [showModal,setShowModal] = useState(false);
-  const [showMemberModal,setShowMemberModal] = useState(false);
+  const [commentText,        setCommentText]        = useState("");
+  const [editingCommentId,   setEditingCommentId]   = useState<number | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState("");
+  const [openMenuId,         setOpenMenuId]         = useState<number | null>(null);
+  const [showComments,       setShowComments]       = useState(false);
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-
-  const isOverdue = (d: string) =>
-    d && d.slice(0, 10) < todayStr && task?.task_status !== "done";
 
   useEffect(() => {
     if (!isLoggedIn()) { navigate("/login"); return; }
     loadData();
   }, [id]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = () => setOpenMenuId(null);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, []);
 
   const loadData = async () => {
     try {
@@ -114,7 +87,6 @@ const TaskDetail = () => {
       setUsers(userRes.data);
       setComments(commentRes.data);
       setAttachments(attachRes.data);
-
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 403) {
         clearAuth(); navigate("/login"); return;
@@ -127,7 +99,18 @@ const TaskDetail = () => {
 
   const getUsername = (uid: number) => users.find(u => u.id === uid)?.username ?? "User";
 
-  // ── Save task edit ─────────────────────────────────────────────
+  // Returns true if current user can edit/delete the comment
+  const canManageComment = (comment: any): boolean => {
+    if (!currentUser) return false;
+    const uid = currentUser.id;
+    return (
+      comment.user_id    === uid ||  // comment author
+      project?.created_by === uid || // project creator
+      task?.assigned_by  === uid     // task assigner
+    );
+  };
+
+  // ── Task ──────────────────────────────────────────────────────────────────
   const saveTask = async () => {
     if (!title.trim()) { toast.error("Task title required"); return; }
     if (dueDate && dueDate < todayStr) { toast.error("Due date cannot be in the past"); return; }
@@ -146,7 +129,7 @@ const TaskDetail = () => {
     }
   };
 
-  const startEdit = () => {
+  const startEditTask = () => {
     setTitle(task.title);
     setDesc(task.description || "");
     setAssignee(task.assigned_to || "");
@@ -156,7 +139,7 @@ const TaskDetail = () => {
     setEditingTask(true);
   };
 
-  // ── Comments ───────────────────────────────────────────────────
+  // ── Comments ──────────────────────────────────────────────────────────────
   const addComment = async () => {
     if (!commentText.trim()) return;
     try {
@@ -172,8 +155,36 @@ const TaskDetail = () => {
     }
   };
 
+  const startEditComment = (comment: any) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentText(comment.comment);
+    setOpenMenuId(null);
+  };
+
+  const cancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText("");
+  };
+
+  const saveEditComment = async (commentId: number) => {
+    if (!editingCommentText.trim()) { toast.error("Comment cannot be empty"); return; }
+    try {
+      const res = await axios.put(
+        `${BASE}/task-comments/${commentId}`,
+        { comment: editingCommentText },
+        { headers: authHeaders() }
+      );
+      setComments(prev => prev.map(c => c.id === commentId ? res.data : c));
+      cancelEditComment();
+      toast.success("Comment updated");
+    } catch {
+      toast.error("Failed to update comment");
+    }
+  };
+
   const deleteComment = async (commentId: number) => {
     if (!window.confirm("Delete this comment?")) return;
+    setOpenMenuId(null);
     try {
       await axios.delete(`${BASE}/task-comments/${commentId}`, { headers: authHeaders() });
       setComments(prev => prev.filter(c => c.id !== commentId));
@@ -183,10 +194,9 @@ const TaskDetail = () => {
     }
   };
 
-  // ── File upload ────────────────────────────────────────────────
+  // ── Attachments ───────────────────────────────────────────────────────────
   const uploadFile = async (file: File) => {
     if (file.size > 10 * 1024 * 1024) { toast.error("File exceeds 10 MB"); return; }
-    setUploading(true); setUploadProgress(0);
     const form = new FormData();
     form.append("task_id", String(id));
     form.append("file", file);
@@ -194,15 +204,12 @@ const TaskDetail = () => {
       const token = authHeaders().Authorization;
       const res = await axios.post(`${BASE}/task-attachments/upload`, form, {
         headers: { Authorization: token },
-        onUploadProgress: e => setUploadProgress(e.total ? Math.round(e.loaded * 100 / e.total) : 0),
       });
       setAttachments(prev => [...prev, res.data]);
       toast.success(`"${file.name}" uploaded`);
     } catch {
       toast.error("Upload failed");
     } finally {
-      setUploading(false);
-      setUploadProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -224,309 +231,258 @@ const TaskDetail = () => {
   if (!task)
     return <div className="text-center mt-20 text-gray-500">Task not found</div>;
 
- return (
-  <div className="max-w-6xl mx-auto p-6">
+  return (
+    <div className="max-w-6xl mx-auto p-6">
 
-   <div className="flex justify-between items-center mb-4">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-4">
+        <Link to={`/projects/${task.project_id}`} className="text-blue-600 text-sm">
+          ← {project?.name || "Back to Project"}
+        </Link>
+        <button
+          onClick={startEditTask}
+          className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+        >
+          Edit Task
+        </button>
+      </div>
 
-  <Link
-    to={`/projects/${task.project_id}`}
-    className="text-blue-600 text-sm"
-  >
-    ← {project?.name || "Back to Project"}
-  </Link>
+      {/* Edit Task Modal */}
+      {editingTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h2 className="text-lg font-semibold mb-4">Edit Task</h2>
+            <div className="grid gap-3">
+              <input
+                className="border p-2 rounded"
+                placeholder="Task title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+              <textarea
+                className="border p-2 rounded"
+                placeholder="Description"
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+              />
+              <select
+                className="border p-2 rounded"
+                value={assignee}
+                onChange={(e) => setAssignee(e.target.value)}
+              >
+                <option value="">Assign Member</option>
+                {members.map((m) => {
+                  const u = users.find((u) => u.id === m.user_id);
+                  return u ? (
+                    <option key={u.id} value={u.id}>{u.username}</option>
+                  ) : null;
+                })}
+              </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500">Status</label>
+                  <select className="border p-2 rounded w-full" value={taskStatus} onChange={(e) => setTaskStatus(e.target.value)}>
+                    {TASK_STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500">Priority</label>
+                  <select className="border p-2 rounded w-full" value={priority} onChange={(e) => setPriority(e.target.value)}>
+                    {PRIORITY_OPTIONS.map((p) => (
+                      <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Due Date</label>
+                <input
+                  type="date"
+                  min={todayStr}
+                  className="border p-2 rounded w-full"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setEditingTask(false)} className="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+              <button onClick={saveTask} className="px-4 py-2 bg-blue-600 text-white rounded">Update Task</button>
+            </div>
+          </div>
+        </div>
+      )}
 
-  <button
-    onClick={startEdit}
-    className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
-  >
-    Edit Task
-  </button>
+      <div className="grid md:grid-cols-3 gap-6">
 
-</div>
+        {/* Left Section */}
+        <div className="md:col-span-2 space-y-6">
 
-    {/* Edit Task Modal */}
-    {editingTask && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          {/* Comments */}
+          <div className="bg-white shadow rounded-xl p-6">
+            <h2 className="font-semibold text-lg mb-4">Comments ({comments.length})</h2>
 
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            {/* New comment input — always visible */}
+            <div className="flex gap-2 mb-4">
+              <input
+                className="border p-2 rounded flex-1"
+                placeholder="Write a comment..."
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addComment(); }}
+              />
+              <button
+                onClick={addComment}
+                className="bg-blue-500 text-white px-4 rounded"
+              >
+                Post
+              </button>
+            </div>
 
-          <h2 className="text-lg font-semibold mb-4">
-            Edit Task
-          </h2>
+            {/* Toggle to show/hide comment list */}
+            <button
+              onClick={() => setShowComments(prev => !prev)}
+              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-3"
+            >
+              <span>{showComments ? "▲" : "▼"}</span>
+              <span>{showComments ? "Hide" : "Show"} Comments ({comments.length})</span>
+            </button>
 
-          <div className="grid gap-3">
+            {showComments && (
+              <div className="space-y-3">
+                {comments.length === 0 && (
+                  <p className="text-gray-400 text-sm">No comments yet.</p>
+                )}
+
+                {comments.map((c) => (
+                  <div key={c.id} className="border p-3 rounded">
+
+                    {/* Comment header */}
+                    <div className="flex justify-between items-start">
+                      <p className="text-xs text-gray-400">
+                        <span className="font-semibold text-gray-700">
+                          {c.user?.username || getUsername(c.user_id)}
+                        </span>
+                        {" · "}
+                        {new Date(c.created_at).toLocaleDateString("en-IN", {
+                          day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                        })}
+                      </p>
+
+                      {/* ⋯ dropdown — only for permitted users */}
+                      {canManageComment(c) && editingCommentId !== c.id && (
+                        <div
+                          className="relative"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() => setOpenMenuId(openMenuId === c.id ? null : c.id)}
+                            className="text-gray-400 hover:text-gray-600 px-1"
+                          >
+                            ⋯
+                          </button>
+
+                          {openMenuId === c.id && (
+                            <div className="absolute right-0 mt-1 w-28 bg-white border rounded shadow z-10">
+                              <button
+                                onClick={() => startEditComment(c)}
+                                className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => deleteComment(c.id)}
+                                className="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-50"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Comment body */}
+                    {editingCommentId === c.id ? (
+                      <div className="mt-2 space-y-2">
+                        <textarea
+                          className="w-full border rounded p-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          rows={3}
+                          value={editingCommentText}
+                          onChange={(e) => setEditingCommentText(e.target.value)}
+                          autoFocus
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={cancelEditComment}
+                            className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => saveEditComment(c.id)}
+                            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-700 mt-1">{c.comment}</p>
+                    )}
+
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Attachments */}
+          <div className="bg-white shadow rounded-xl p-6">
+            <h2 className="font-semibold text-lg mb-4">Attachments ({attachments.length})</h2>
 
             <input
-              className="border p-2 rounded"
-              placeholder="Task title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); }}
             />
-
-            <textarea
-              className="border p-2 rounded"
-              placeholder="Description"
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-            />
-
-            <select
-              className="border p-2 rounded"
-              value={assignee}
-              onChange={(e) => setAssignee(e.target.value)}
-            >
-              <option value="">Assign Member</option>
-
-              {members.map((m) => {
-                const u = users.find((u) => u.id === m.user_id);
-                return u ? (
-                  <option key={u.id} value={u.id}>
-                    {u.username}
-                  </option>
-                ) : null;
-              })}
-            </select>
-
-            <div className="grid grid-cols-2 gap-3">
-
-              <div>
-                <label className="text-xs text-gray-500">Status</label>
-                <select
-                  className="border p-2 rounded w-full"
-                  value={taskStatus}
-                  onChange={(e) => setTaskStatus(e.target.value)}
-                >
-                  {TASK_STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {STATUS_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs text-gray-500">Priority</label>
-                <select
-                  className="border p-2 rounded w-full"
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                >
-                  {PRIORITY_OPTIONS.map((p) => (
-                    <option key={p} value={p}>
-                      {PRIORITY_LABELS[p]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-500">Due Date</label>
-              <input
-                type="date"
-                min={todayStr}
-                className="border p-2 rounded w-full"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-            </div>
-
-          </div>
-
-          <div className="flex justify-end gap-3 mt-6">
-
             <button
-              onClick={() => setEditingTask(false)}
-              className="px-4 py-2 bg-gray-200 rounded"
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-gray-100 px-4 py-2 rounded mb-4"
             >
-              Cancel
+              Upload File
             </button>
 
-            <button
-              onClick={saveTask}
-              className="px-4 py-2 bg-blue-600 text-white rounded"
-            >
-              Update Task
-            </button>
-
-          </div>
-
-        </div>
-
-      </div>
-    )}
-
-    <div className="grid md:grid-cols-3 gap-6">
-
-      {/* Left Section */}
-      <div className="md:col-span-2 space-y-6">
-
-        {/* Comments */}
-        <div className="bg-white shadow rounded-xl p-6">
-
-          <h2 className="font-semibold text-lg mb-4">
-            Comments ({comments.length})
-          </h2>
-
-          <div className="space-y-3 mb-4">
-
-            {comments.length === 0 && (
-              <p className="text-gray-400 text-sm">
-                No comments yet.
-              </p>
-            )}
-
-            {comments.map((c) => (
-              <div key={c.id} className="border p-3 rounded">
-
-                <div className="flex justify-between items-start">
-
-                  <p className="text-xs text-gray-400">
-                    <span className="font-semibold text-gray-700">
-                      {c.user?.username || getUsername(c.user_id)}
-                    </span>
-                    {" · "}
-                    {new Date(c.created_at).toLocaleDateString("en-IN", {
-                      day: "2-digit",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-
-                  <button
-                    onClick={() => deleteComment(c.id)}
-                    className="text-red-400 text-xs"
-                  >
-                    Delete
-                  </button>
-
+            {attachments.map((a) => (
+              <div key={a.id} className="flex items-center justify-between border p-3 rounded mb-2">
+                <p className="text-sm">{a.file_name}</p>
+                <div className="flex gap-3">
+                  <a href={`${BASE}${a.file_path}`} download className="text-blue-600 text-sm">Download</a>
+                  <button onClick={() => deleteAttachment(a.id)} className="text-red-500 text-sm">Remove</button>
                 </div>
-
-                <p className="text-sm text-gray-700 mt-1">
-                  {c.comment}
-                </p>
-
               </div>
             ))}
-
-          </div>
-
-          <div className="flex gap-2">
-
-            <input
-              className="border p-2 rounded flex-1"
-              placeholder="Write a comment..."
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") addComment();
-              }}
-            />
-
-            <button
-              onClick={addComment}
-              className="bg-blue-500 text-white px-4 rounded"
-            >
-              Post
-            </button>
-
           </div>
 
         </div>
 
-        {/* Attachments */}
-        <div className="bg-white shadow rounded-xl p-6">
-
-          <h2 className="font-semibold text-lg mb-4">
-            Attachments ({attachments.length})
-          </h2>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) uploadFile(f);
-            }}
-          />
-
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="bg-gray-100 px-4 py-2 rounded mb-4"
-          >
-            Upload File
-          </button>
-
-          {attachments.map((a) => (
-            <div
-              key={a.id}
-              className="flex items-center justify-between border p-3 rounded mb-2"
-            >
-
-              <p className="text-sm">{a.file_name}</p>
-
-              <div className="flex gap-3">
-
-                <a
-                  href={`${BASE}${a.file_path}`}
-                  download
-                  className="text-blue-600"
-                >
-                  Download
-                </a>
-
-                <button
-                  onClick={() => deleteAttachment(a.id)}
-                  className="text-red-500"
-                >
-                  Remove
-                </button>
-
-              </div>
-
-            </div>
-          ))}
-
+        {/* Sidebar */}
+        <div className="space-y-4">
+          <div className="bg-white shadow rounded-xl p-4">
+            <h3 className="font-semibold mb-3">Details</h3>
+            <p className="text-sm">Status: {STATUS_LABELS[task.task_status]}</p>
+            <p className="text-sm">Priority: {PRIORITY_LABELS[task.priority]}</p>
+            <p className="text-sm">Assigned To: {task.assignee?.username || "Unassigned"}</p>
+            <p className="text-sm">Due: {task.due_date ? formatDate(task.due_date) : "—"}</p>
+          </div>
         </div>
 
       </div>
-
-      {/* Sidebar */}
-      <div className="space-y-4">
-
-        <div className="bg-white shadow rounded-xl p-4">
-
-          <h3 className="font-semibold mb-3">
-            Details
-          </h3>
-
-          <p className="text-sm">
-            Status: {STATUS_LABELS[task.task_status]}
-          </p>
-
-          <p className="text-sm">
-            Priority: {PRIORITY_LABELS[task.priority]}
-          </p>
-
-          <p className="text-sm">
-            Assigned To: {task.assignee?.username || "Unassigned"}
-          </p>
-
-          <p className="text-sm">
-            Due: {task.due_date ? formatDate(task.due_date) : "—"}
-          </p>
-
-        </div>
-
-      </div>
-
     </div>
+  );
+};
 
-  </div>
-);
-}
 export default TaskDetail;

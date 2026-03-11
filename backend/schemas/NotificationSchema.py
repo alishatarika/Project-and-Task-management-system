@@ -9,3 +9,4 @@ class NotificationCreate(BaseModel):
 class NotificationUpdate(BaseModel):
     message: Optional[str] = None
     status: Optional[bool] = None
+    is_seen: Optional[bool] = None

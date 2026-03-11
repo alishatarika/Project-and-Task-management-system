@@ -11,6 +11,7 @@ class Notification(Base):
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     send_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    is_seen=Column(Boolean,default=False,nullable=False)
 
     message = Column(String(500), nullable=False)
     status = Column(Boolean, default=True, nullable=False)
@@ -37,6 +38,7 @@ class Notification(Base):
             "user_id": self.user_id,
             "send_by": self.send_by,
             "message": self.message,
+            "is_seen": self.is_seen,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

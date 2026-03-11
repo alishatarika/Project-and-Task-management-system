@@ -43,6 +43,7 @@ const Profile: React.FC = () => {
             <p className="text-gray-700 font-medium">{user.email}</p>
           </div>
           
+          
         </div>
 
         <button

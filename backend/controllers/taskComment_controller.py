@@ -2,7 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database.connection import get_db
 from schemas.Task_Comment import TaskCommentCreate, TaskCommentUpdate
-from services.taskcomment_services import *
+from services.taskcomment_services import (
+    add_comment,
+    get_all_comments,
+    get_comments,
+    update_comment,
+    delete_comment,
+)
 from middleware.auth import get_current_user
 from models.Users import Users
 
@@ -13,38 +19,27 @@ router = APIRouter(prefix="/task-comments", tags=["Task Comments"])
 def create(
     data: TaskCommentCreate,
     db: Session = Depends(get_db),
-    current_user: Users = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user),
 ):
-
-    comment = add_comment(
-        db,
-        data.task_id,
-        data.user_id,
-        data.comment
-    )
-
+    comment = add_comment(db, data.task_id, data.user_id, data.comment)
     return comment.to_dict()
-
 
 
 @router.get("/")
 def get_all(
     db: Session = Depends(get_db),
-    current_user: Users = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user),
 ):
-
-    comments = get_all_comments(db)
-
-    return [c.to_dict() for c in comments]
+    return [c.to_dict() for c in get_all_comments(db)]
 
 
 @router.get("/task/{task_id}")
-def get(task_id: int, db: Session = Depends(get_db),
-        current_user: Users = Depends(get_current_user)):
-
-    comments = get_comments(db, task_id)
-
-    return [c.to_dict() for c in comments]
+def get(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    return [c.to_dict() for c in get_comments(db, task_id)]
 
 
 @router.put("/{comment_id}")
@@ -52,11 +47,18 @@ def update(
     comment_id: int,
     data: TaskCommentUpdate,
     db: Session = Depends(get_db),
-    current_user: Users = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user),
 ):
-
-    comment = update_comment(db, comment_id, data.comment)
-
+    """
+    Edit a comment.
+    Permission: comment author | project creator | task assigner.
+    """
+    comment = update_comment(
+        db,
+        comment_id=comment_id,
+        new_text=data.comment,
+        requesting_user_id=current_user.id,   # ← pass authenticated user
+    )
     return comment.to_dict()
 
 
@@ -64,12 +66,17 @@ def update(
 def delete(
     comment_id: int,
     db: Session = Depends(get_db),
-    current_user: Users = Depends(get_current_user)
+    current_user: Users = Depends(get_current_user),
 ):
-
-    comment = delete_comment(db, comment_id)
-
+    """
+    Delete a comment.
+    Permission: comment author | project creator | task assigner.
+    """
+    comment = delete_comment(
+        db,
+        comment_id=comment_id,
+        requesting_user_id=current_user.id,   # ← pass authenticated user
+    )
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
-
     return {"message": "Comment deleted"}
